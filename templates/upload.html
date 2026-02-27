@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Upload Document{% endblock %}
+
+{% block content %}
+<section class="upload-wrapper">
+    <div class="upload-card">
+        <span class="upload-tag">AI Document Intake</span>
+        <h1>Upload Document</h1>
+        <p class="upload-subtext">Upload a PDF to extract key-value pairs using OpenAI vision extraction.</p>
+
+        {% if error %}
+            <div class="alert-error">{{ error }}</div>
+        {% endif %}
+
+        <form action="/extract" method="post" enctype="multipart/form-data" class="upload-form">
+            <label for="file" class="file-label">Choose PDF</label>
+            <input id="file" name="file" type="file" accept="application/pdf" required>
+            <button type="submit" class="primary-btn">Extract Data</button>
+            <span class="upload-hint">Secure upload • PDF only • Multi-page supported</span>
+        </form>
+    </div>
+</section>
+{% endblock %}

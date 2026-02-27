@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Extraction Results{% endblock %}
+
+{% block content %}
+<section class="results-header">
+    <div>
+        <h1>Extraction Results</h1>
+        <p>{{ file_name }}</p>
+    </div>
+    <div class="results-actions">
+        <a class="secondary-btn secondary-btn-success" href="/results/{{ document_id }}/download-excel">Download Excel</a>
+        <a class="secondary-btn" href="/">Upload New Document</a>
+    </div>
+</section>
+
+<section class="results-layout">
+    <div class="pdf-panel">
+        <iframe src="/documents/{{ document_id }}" title="PDF Preview"></iframe>
+    </div>
+    <div class="data-panel">
+        {% for section in sections %}
+        <article class="section-card">
+            <h2>{{ section.title }}</h2>
+            <div class="field-grid">
+                {% for field in section.fields %}
+                <div class="field-item">
+                    <div class="field-label-row">
+                        <span class="field-name">{{ field.name }}</span>
+                        {% if field.required %}
+                        <span class="badge required">Required</span>
+                        {% else %}
+                        <span class="badge optional">Optional</span>
+                        {% endif %}
+                    </div>
+                    <div class="field-value">
+                        {% if field.value is not none and field.value != "" %}
+                            {{ field.value }}
+                        {% else %}
+                            <span class="null-value">null</span>
+                        {% endif %}
+                    </div>
+                    <div class="field-meta">
+                        Detected Source: {{ field.detected_source if field.detected_source else "N/A" }}
+                    </div>
+                    <div class="field-meta">
+                        Confidence:
+                        {% if field.confidence is not none %}
+                            {{ (field.confidence * 100)|round(1) }}%
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}
