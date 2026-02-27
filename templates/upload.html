@@ -12,12 +12,99 @@
             <div class="alert-error">{{ error }}</div>
         {% endif %}
 
-        <form action="/extract" method="post" enctype="multipart/form-data" class="upload-form">
+        <form action="/extract" method="post" enctype="multipart/form-data" class="upload-form" id="extractForm">
             <label for="file" class="file-label">Choose PDF</label>
-            <input id="file" name="file" type="file" accept="application/pdf" required>
-            <button type="submit" class="primary-btn">Extract Data</button>
+            <div class="file-input-wrapper">
+                <input id="file" name="file" type="file" accept="application/pdf" required>
+                <div class="file-display" id="fileDisplay">
+                    <span class="file-placeholder">No file selected</span>
+                </div>
+            </div>
+            <button type="submit" class="primary-btn" id="extractBtn">
+                <span class="btn-text">Extract Data</span>
+                <span class="btn-loader" style="display: none;">
+                    <svg class="spinner" viewBox="0 0 24 24">
+                        <circle class="spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-dasharray="31.416" stroke-dashoffset="31.416">
+                            <animate attributeName="stroke-dasharray" dur="2s" values="0 31.416;15.708 15.708;0 31.416;0 31.416" repeatCount="indefinite"/>
+                            <animate attributeName="stroke-dashoffset" dur="2s" values="0;-15.708;-31.416;-31.416" repeatCount="indefinite"/>
+                        </circle>
+                    </svg>
+                    Processing...
+                </span>
+            </button>
             <span class="upload-hint">Secure upload • PDF only • Multi-page supported</span>
         </form>
     </div>
+    
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="loading-content">
+            <div class="loader-spinner">
+                <div class="spinner-ring"></div>
+                <div class="spinner-ring"></div>
+                <div class="spinner-ring"></div>
+            </div>
+            <h2 class="loading-title">Processing Document</h2>
+            <div class="loading-progress">
+                <div class="progress-bar"></div>
+            </div>
+        </div>
+    </div>
 </section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('extractForm');
+        const extractBtn = document.getElementById('extractBtn');
+        const btnText = extractBtn.querySelector('.btn-text');
+        const btnLoader = extractBtn.querySelector('.btn-loader');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const fileInput = document.getElementById('file');
+        const fileDisplay = document.getElementById('fileDisplay');
+
+        // Handle file selection display
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                fileDisplay.innerHTML = `
+                    <svg class="file-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                    <span class="file-name">${file.name}</span>
+                    <span class="file-size">${formatFileSize(file.size)}</span>
+                `;
+                fileDisplay.classList.add('has-file');
+            } else {
+                fileDisplay.innerHTML = '<span class="file-placeholder">No file selected</span>';
+                fileDisplay.classList.remove('has-file');
+            }
+        });
+
+        // Handle form submission
+        form.addEventListener('submit', function(e) {
+            if (!fileInput.files[0]) {
+                e.preventDefault();
+                return;
+            }
+
+            // Show loading state
+            extractBtn.disabled = true;
+            btnText.style.display = 'none';
+            btnLoader.style.display = 'flex';
+            loadingOverlay.style.display = 'flex';
+            
+            // Prevent form from being submitted multiple times
+            form.style.pointerEvents = 'none';
+        });
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+    });
+</script>
 {% endblock %}
