@@ -25,8 +25,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Create necessary directories
-RUN mkdir -p storage/uploads logs && \
-    chmod 755 storage/uploads logs
+RUN mkdir -p storage/uploads storage/records logs && \
+    chmod 755 storage/uploads storage/records logs
 
 # Expose port
 EXPOSE 7005

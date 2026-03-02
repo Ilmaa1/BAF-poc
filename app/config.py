@@ -8,7 +8,9 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 UPLOAD_DIR = BASE_DIR / "storage" / "uploads"
+RECORDS_DIR = BASE_DIR / "storage" / "records"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+RECORDS_DIR.mkdir(parents=True, exist_ok=True)
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.2")
