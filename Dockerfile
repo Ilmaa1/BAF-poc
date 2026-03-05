@@ -24,16 +24,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Create necessary directories
-RUN mkdir -p storage/uploads storage/records logs && \
-    chmod 755 storage/uploads storage/records logs
+# Create input/output directories
+RUN mkdir -p input output
 
-# Expose port
-EXPOSE 7005
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:7005/')" || exit 1
-
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7005", "--workers", "4"]
+# Run scheduler (monitors input folder, processes new PDFs)
+CMD ["python", "scheduler.py"]

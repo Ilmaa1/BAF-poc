@@ -5,25 +5,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: document-extraction-app
-    ports:
-      - "7005:7005"
+    container_name: baf-pdf-processor
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
-      # Persist uploads across container restarts
-      - ./storage/uploads:/app/storage/uploads
-      # Persist logs
-      - ./logs:/app/logs
+      - ./input:/app/input
+      - ./output:/app/output
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:7005/')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
     networks:
       - app-network
 

@@ -141,11 +141,9 @@ ehthumbs.db
 Thumbs.db
 Desktop.ini
 
-# Storage (keep .gitkeep)
-storage/uploads/*
-!storage/uploads/.gitkeep
-storage/records/*
-!storage/records/.gitkeep
+# Input/Output (keep .gitkeep)
+input/*.pdf
+output/*.xlsx
 
 # Docker
 .dockerignore

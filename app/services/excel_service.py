@@ -1,22 +1,58 @@
-import json
 from io import BytesIO
 import logging
+from pathlib import Path
 
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 
-from app.services.field_config import DOCUMENT_EXTRACTION_CONFIG, SECTION_ORDER
-
 logger = logging.getLogger(__name__)
 
+# Output filename for consolidated Excel
+OUTPUT_EXCEL_NAME = "DQ_Anomaly_V2.xlsx"
 
-def _field_section_map() -> dict[str, str]:
-    section_map: dict[str, str] = {}
-    for section_name, field_names in SECTION_ORDER:
-        for field_name in field_names:
-            section_map[field_name] = section_name
-    return section_map
+# Column order: extracted fields first, then workflow columns (empty for extraction)
+EXCEL_COLUMNS = [
+    "PERNO",
+    "FIRST_NAME",
+    "MIDDLE_NAME",
+    "SURNAME",
+    "DOB",
+    "NI_NUMBER",
+    "CONTACT_MODE",
+    "BIRTH_NATION_NO",
+    "SMOKER",
+    "POL_REF_NO",
+    "POLICY_NO",
+    "TERM",
+    "START_DATE",
+    "END_DATE",
+    "FREQ",
+    "POL_STAT",
+    "CURRENT_BRANCH",
+    "PAY_ID",
+    "ADDRNO",
+    "ADDR1",
+    "ADDR2",
+    "ADDR3",
+    "ADDR4",
+    "POSTCODE",
+    "HOME_PHONES",
+    "MOBILE_PHONES",
+    "WORK_PHONES",
+    "EMAILS",
+    "FAX",
+    "SMS",
+    "Updated by",
+    "Updated date",
+    "Comments",
+    "Reviewed by",
+    "Reviewed date",
+    "Reviewer Comments",
+    "Approved by",
+    "Approved date",
+    "Approver Comments",
+]
 
 
 def _autosize_columns(worksheet) -> None:
@@ -27,7 +63,7 @@ def _autosize_columns(worksheet) -> None:
             value = "" if cell.value is None else str(cell.value)
             if len(value) > max_length:
                 max_length = len(value)
-        worksheet.column_dimensions[column_letter].width = min(max(max_length + 2, 14), 45)
+        worksheet.column_dimensions[column_letter].width = min(max(max_length + 2, 12), 45)
 
 
 def _add_headers(worksheet, headers: list[str]) -> None:
@@ -44,66 +80,69 @@ def generate_extraction_excel(
     field_confidence: dict,
     field_source: dict,
 ) -> bytes:
-    config = DOCUMENT_EXTRACTION_CONFIG["document_extraction_config"]
-    fields = config["fields"]
-    section_map = _field_section_map()
-
     workbook = Workbook()
-    logger.info("Generating extraction excel. total_fields=%s", len(fields))
-
     data_sheet = workbook.active
     data_sheet.title = "Extracted Data"
-    _add_headers(
-        data_sheet,
-        [
-            "Section",
-            "Field Name",
-            "Value",
-            "Confidence (%)",
-            "Detected Source",
-            "Required",
-            "Primary Source",
-            "Fallback Sources",
-            "Notes",
-        ],
-    )
 
-    for field in fields:
-        name = field["field_name"]
-        confidence_value = field_confidence.get(name)
-        confidence_percent = (
-            round(float(confidence_value) * 100, 2) if confidence_value is not None else None
-        )
-        data_sheet.append(
-            [
-                section_map.get(name, "Unmapped"),
-                name,
-                extracted_fields.get(name),
-                confidence_percent,
-                field_source.get(name),
-                "Yes" if field["extraction_required"] else "No",
-                field["primary_source"],
-                ", ".join(field["fallback_sources"]) if field["fallback_sources"] else None,
-                field["notes"],
-            ]
-        )
+    _add_headers(data_sheet, EXCEL_COLUMNS)
 
+    # Build data row: extracted values for each field, then empty workflow columns
+    row = []
+    for col in EXCEL_COLUMNS:
+        if col in extracted_fields:
+            val = extracted_fields.get(col)
+            row.append(val if val is not None else "")
+        else:
+            row.append("")
+
+    data_sheet.append(row)
     _autosize_columns(data_sheet)
     data_sheet.freeze_panes = "A2"
-
-    raw_json_sheet = workbook.create_sheet(title="Raw JSON")
-    _add_headers(raw_json_sheet, ["JSON"])
-    raw_payload = {
-        "version": config["version"],
-        "extracted_fields": extracted_fields,
-        "field_confidence": field_confidence,
-        "field_source": field_source,
-    }
-    raw_json_sheet.append([json.dumps(raw_payload, indent=2)])
-    raw_json_sheet.column_dimensions["A"].width = 120
 
     output = BytesIO()
     workbook.save(output)
     output.seek(0)
     logger.info("Completed extraction excel generation.")
     return output.getvalue()
+
+
+def _extracted_fields_to_row(extracted_fields: dict) -> list:
+    """Convert extracted_fields dict to row values in EXCEL_COLUMNS order."""
+    row = []
+    for col in EXCEL_COLUMNS:
+        if col in extracted_fields:
+            val = extracted_fields.get(col)
+            row.append(val if val is not None else "")
+        else:
+            row.append("")
+    return row
+
+
+def append_rows_to_excel(
+    output_path: Path,
+    rows: list[dict],
+) -> None:
+    """
+    Append rows to DQ_Anomaly_V2.xlsx. Creates file with headers if it doesn't exist.
+    Each row is an extracted_fields dict.
+    """
+    if not rows:
+        return
+
+    if output_path.exists():
+        workbook = load_workbook(output_path)
+        data_sheet = workbook.active
+    else:
+        workbook = Workbook()
+        data_sheet = workbook.active
+        data_sheet.title = "Extracted Data"
+        _add_headers(data_sheet, EXCEL_COLUMNS)
+
+    for extracted_fields in rows:
+        row = _extracted_fields_to_row(extracted_fields)
+        data_sheet.append(row)
+
+    _autosize_columns(data_sheet)
+    data_sheet.freeze_panes = "A2"
+    workbook.save(output_path)
+    logger.info("Appended %d row(s) to %s", len(rows), output_path.name)
