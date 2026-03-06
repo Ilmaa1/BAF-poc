@@ -43,7 +43,10 @@ def process_pdf(pdf_path: Path) -> dict | None:
             return None
 
         extraction_result = extract_fields_from_images(images)
-        return extraction_result["extracted_fields"]
+        return {
+            "extracted_fields": extraction_result["extracted_fields"],
+            "field_source": extraction_result["field_source"],
+        }
 
     except Exception:
         logger.exception("Failed to process %s", pdf_path.name)
