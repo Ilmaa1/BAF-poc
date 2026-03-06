@@ -13,6 +13,7 @@ Environment:
 
 import argparse
 import logging
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -204,7 +205,7 @@ def process_existing_excel(input_dir: Path, output_dir: Path, input_excel: Path)
     for pdf_path in pdfs_to_delete:
         try:
             dest = processed_dir / pdf_path.name
-            pdf_path.rename(dest)
+            shutil.move(str(pdf_path), str(dest))
             logger.info("Moved to processed: %s", pdf_path.name)
         except OSError:
             logger.exception("Could not move %s", pdf_path)
