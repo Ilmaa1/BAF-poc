@@ -135,9 +135,8 @@ def extract_fields_from_images(images: list[dict]) -> dict[str, Any]:
         return _empty_result()
 
     logger.info(
-        "Starting field extraction request. images=%s model=%s",
+        "Starting IDP field extraction request. images=%s",
         len(images),
-        OPENAI_MODEL,
     )
     content: list[dict[str, Any]] = [{"type": "input_text", "text": _build_prompt()}]
 
@@ -169,15 +168,14 @@ def extract_fields_from_images(images: list[dict]) -> dict[str, Any]:
         )
     except requests.RequestException:
         logger.exception(
-            "OpenAI extraction request failed before response. images=%s model=%s",
+            "IDP extraction request failed before response. images=%s",
             len(images),
-            OPENAI_MODEL,
         )
         raise
 
     response.raise_for_status()
     logger.info(
-        "OpenAI extraction response received. status_code=%s elapsed_ms=%s",
+        "IDP extraction response received. status_code=%s elapsed_ms=%s",
         response.status_code,
         int((time.perf_counter() - request_start) * 1000),
     )
