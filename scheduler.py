@@ -84,7 +84,7 @@ def process_input_folder(input_dir: Path, output_dir: Path) -> None:
         if extracted is not None:
             rows.append(extracted)
             try:
-                pdf_path.unlink()
+                pdf_path.unlink(missing_ok=True)
                 logger.info("Deleted input: %s", pdf_path.name)
             except OSError:
                 logger.exception("Could not delete %s", pdf_path)
