@@ -187,8 +187,8 @@ DOCUMENT_EXTRACTION_CONFIG = {
             {
                 "field_name": "ADDR4",
                 "primary_source": "Utility Bill - Country",
-                "fallback_sources": [],
-                "notes": "Extract country exactly",
+                "fallback_sources": ["Eapp - Country"],
+                "notes": "Extract country exactly. On the Eapp, scan for ANY label containing the word 'Country' — including 'Country:', 'Country of Birth:', 'Country of Origin:', 'Country of Residence:'. Even if the label says 'Country of Birth', extract its value for ADDR4. Do not skip this field because of the label wording.",
                 "extraction_required": False,
                 "do_not_infer": True,
             },
