@@ -19,7 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from app.config import INPUT_DIR, OUTPUT_DIR
+from app.config import INPUT_DIR, OUTPUT_DIR, LOG_FILE
 from app.services.excel_service import OUTPUT_EXCEL_NAME, append_rows_to_excel
 from app.services.extraction_service import extract_fields_from_images
 from app.services.pdf_service import pdf_to_base64_images
@@ -31,11 +31,12 @@ DEFAULT_POLL_INTERVAL = 5
 
 
 def process_pdf(pdf_path: Path) -> dict | None:
-    """
-    Process a single PDF and return extracted_fields dict, or None on failure.
-    """
-    logger.info("Processing: %s", pdf_path.name)
+    """Process a single PDF and return row dict, or None on failure."""
+    logger.info("=" * 60)
+    logger.info("START  %s", pdf_path.name)
+    logger.info("=" * 60)
 
+    start = time.perf_counter()
     try:
         images = pdf_to_base64_images(pdf_path)
         if not images:
@@ -43,10 +44,26 @@ def process_pdf(pdf_path: Path) -> dict | None:
             return None
 
         extraction_result = extract_fields_from_images(images)
-        return extraction_result["extracted_fields"]
+        elapsed = round(time.perf_counter() - start, 1)
+
+        populated = sum(
+            1 for v in extraction_result["extracted_fields"].values() if v is not None
+        )
+        total = len(extraction_result["extracted_fields"])
+        logger.info(
+            "DONE   %s | fields=%d/%d | time=%.1fs",
+            pdf_path.name, populated, total, elapsed,
+        )
+        return {
+            "extracted_fields": extraction_result["extracted_fields"],
+            "field_source": extraction_result["field_source"],
+            "field_confidence": extraction_result["field_confidence"],
+            "time_taken": elapsed,
+        }
 
     except Exception:
-        logger.exception("Failed to process %s", pdf_path.name)
+        elapsed = round(time.perf_counter() - start, 1)
+        logger.exception("FAILED %s | time=%.1fs", pdf_path.name, elapsed)
         return None
 
 
@@ -60,12 +77,12 @@ def process_input_folder(input_dir: Path, output_dir: Path) -> None:
 
     logger.info("Found %d PDF(s) in %s", len(pdf_files), input_dir)
 
+    start = time.perf_counter()
     rows: list[dict] = []
     for pdf_path in pdf_files:
         extracted = process_pdf(pdf_path)
         if extracted is not None:
             rows.append(extracted)
-            # Delete input file as soon as we've picked and processed it
             try:
                 pdf_path.unlink()
                 logger.info("Deleted input: %s", pdf_path.name)
@@ -75,7 +92,13 @@ def process_input_folder(input_dir: Path, output_dir: Path) -> None:
     if rows:
         output_path = output_dir / OUTPUT_EXCEL_NAME
         append_rows_to_excel(output_path, rows)
-        logger.info("Appended %d row(s) to %s", len(rows), output_path)
+
+    elapsed = time.perf_counter() - start
+    logger.info("=" * 60)
+    logger.info("SUMMARY: %d/%d succeeded in %.1fs", len(rows), len(pdf_files), elapsed)
+    logger.info("Output Excel : %s", output_dir / OUTPUT_EXCEL_NAME)
+    logger.info("Log file     : %s", LOG_FILE)
+    logger.info("=" * 60)
 
 
 def run_polling_loop(input_dir: Path, output_dir: Path, interval: int) -> None:

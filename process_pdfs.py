@@ -21,7 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from app.config import INPUT_DIR, OUTPUT_DIR
+from app.config import INPUT_DIR, OUTPUT_DIR, LOG_FILE
 from app.services.excel_service import OUTPUT_EXCEL_NAME, append_rows_to_excel
 from app.services.extraction_service import extract_fields_from_images
 from app.services.pdf_service import pdf_to_base64_images
@@ -31,8 +31,11 @@ logger = logging.getLogger(__name__)
 
 def process_pdf(pdf_path: Path) -> dict | None:
     """Process a single PDF and return extracted_fields dict, or None on failure."""
-    logger.info("Processing: %s", pdf_path.name)
+    logger.info("=" * 60)
+    logger.info("START  %s", pdf_path.name)
+    logger.info("=" * 60)
 
+    start = time.perf_counter()
     try:
         images = pdf_to_base64_images(pdf_path)
         if not images:
@@ -40,10 +43,26 @@ def process_pdf(pdf_path: Path) -> dict | None:
             return None
 
         extraction_result = extract_fields_from_images(images)
-        return extraction_result["extracted_fields"]
+        elapsed = round(time.perf_counter() - start, 1)
+
+        populated = sum(
+            1 for v in extraction_result["extracted_fields"].values() if v is not None
+        )
+        total = len(extraction_result["extracted_fields"])
+        logger.info(
+            "DONE   %s | fields=%d/%d | time=%.1fs",
+            pdf_path.name, populated, total, elapsed,
+        )
+        return {
+            "extracted_fields": extraction_result["extracted_fields"],
+            "field_source": extraction_result["field_source"],
+            "field_confidence": extraction_result["field_confidence"],
+            "time_taken": elapsed,
+        }
 
     except Exception:
-        logger.exception("Failed to process %s", pdf_path.name)
+        elapsed = round(time.perf_counter() - start, 1)
+        logger.exception("FAILED %s | time=%.1fs", pdf_path.name, elapsed)
         return None
 
 
@@ -98,13 +117,14 @@ def main() -> int:
         append_rows_to_excel(output_path, rows)
 
     elapsed = time.perf_counter() - start
+    logger.info("=" * 60)
     logger.info(
-        "Completed: %d/%d succeeded in %.1fs. Output: %s",
-        len(rows),
-        len(pdf_files),
-        elapsed,
-        output_dir / OUTPUT_EXCEL_NAME,
+        "SUMMARY: %d/%d succeeded in %.1fs",
+        len(rows), len(pdf_files), elapsed,
     )
+    logger.info("Output Excel : %s", output_dir / OUTPUT_EXCEL_NAME)
+    logger.info("Log file     : %s", LOG_FILE)
+    logger.info("=" * 60)
 
     return 0 if len(rows) == len(pdf_files) else 1
 
